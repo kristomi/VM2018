@@ -1,0 +1,4 @@
+.envrc
+.DS_Store
+*.pyc
+data/processed/pymc_trace.pkl
