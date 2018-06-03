@@ -52,7 +52,7 @@ class Elo:
         unique_teams = set(make_long().team.values)
 
         self.teams = {team: TeamElo(team) for team in unique_teams}
-        self.HFA = 100.0    # Home field advantage
+        self.HFA = 200.0    # Home field advantage
         self.K = 20.0       # The speed at which Elo ratings change
         self.elo_df = None
 
@@ -86,7 +86,7 @@ class Elo:
 
         out = pd.DataFrame(games).T
         out['draw'] = 1-out['home_win'] - out['away_win']
-        X = (out['home_elo'] - out['away_elo']).values
+        X = (out['home_elo'] - out['away_elo'] + self.HFA*(1-out['neutral'])).values
         y = out[['home_win', 'draw', 'away_win']].astype(int).values
 
         self.lr.fit(X.reshape(-1, 1), np.argwhere(y == 1)[:, 1])
@@ -113,9 +113,8 @@ class Elo:
         else:
             home_score, away_score = 0, 0
 
-        #out = self.update(date, home_team, away_team, home_score, away_score, neutral)
-        #return {**out, **{'home_score': home_score, 'away_score': away_score, 'to_overtime': to_overtime}}
-        return  {'home_score': home_score, 'away_score': away_score, 'to_overtime': to_overtime}
+        out = self.update(date, home_team, away_team, home_score, away_score, neutral)
+        return {**out, **{'home_score': home_score, 'away_score': away_score, 'to_overtime': to_overtime}}
 
     def update(self, date, home_team, away_team, home_score, away_score, neutral):
         home_elo, away_elo = self.teams[home_team].last_elo, self.teams[away_team].last_elo
@@ -129,13 +128,17 @@ class Elo:
 
     def pred(self, home_team, away_team, neutral=True, can_draw=True, to_overtime=False):
         home_elo, away_elo = self.teams[home_team].last_elo, self.teams[away_team].last_elo
-        ar = self.lr.predict_proba(home_elo - away_elo)
-        outcome = [home_team, 'draw', away_team][np.argmax(np.random.random() < ar.cumsum())]
-        #p_home = 1.0 / (math.pow(10.0, (-(home_elo - away_elo)/400.0)) + 1.0)
-        #if np.random.random() < p_home:
-        #    outcome = home_team
-        #else:
-        #    outcome = away_team
+        method = 'fivethirtyeight'
+        if method == 'fivethirtyeight': # Bruker bare Elo - seier uansett
+            p_home = 1.0 / (math.pow(10.0, (-(home_elo - away_elo)/400.0)) + 1.0)
+            if np.random.random() < p_home:
+                outcome = home_team
+            else:
+                outcome = away_team
+        elif method == 'regression': # Logistisk regresjon, også uavgjort mulig
+            ar = self.lr.predict_proba(home_elo - away_elo)
+            outcome = [home_team, 'draw', away_team][np.argmax(np.random.random() < ar.cumsum())]
+
         if outcome == 'draw' and not can_draw:
             return self.pred(home_team, away_team, neutral, can_draw, to_overtime=True)
         return outcome, to_overtime

@@ -54,7 +54,6 @@ class ConstantPar:
         all_teams = pd.read_pickle(DATA_DIR / 'processed/all_teams.pkl').team.values
 
         if method == 'random':
-            np.random.seed(seed)
             idx = str(np.random.choice(list(range(100))))
         elif method == 'median':
             idx = str(50)
