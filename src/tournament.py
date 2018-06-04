@@ -90,6 +90,9 @@ class Outcome:
     def __repr__(self):
         return f"Outcome(home={self.home}, away={self.away}, home_goals={self.home_goals}, away_goals={self.away_goals}, can_draw={self.can_draw}, to_overtime={self.to_overtime})"
 
+    def __str__(self):
+        return f"{self.home} {self.home_goals} - {self.away_goals} {self.away}"
+
     @property
     def stats(self):
         winner = self.winner
@@ -177,7 +180,7 @@ class WorldCup:
         playoffs[50] = self.match(self.adv('B2'), self.adv('A1'), can_draw=False)
         playoffs[51] = self.match(self.adv('A2'), self.adv('B1'), can_draw=False)
         playoffs[52] = self.match(self.adv('C2'), self.adv('D1'), can_draw=False)
-        playoffs[53] = self.match(self.adv('F2'), self.adv('C1'), can_draw=False)
+        playoffs[53] = self.match(self.adv('F2'), self.adv('E1'), can_draw=False)
         playoffs[54] = self.match(self.adv('H2'), self.adv('G1'), can_draw=False)
         playoffs[55] = self.match(self.adv('E2'), self.adv('F1'), can_draw=False)
         playoffs[56] = self.match(self.adv('G2'), self.adv('H1'), can_draw=False)
