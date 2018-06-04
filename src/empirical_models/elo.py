@@ -128,7 +128,7 @@ class Elo:
 
     def pred(self, home_team, away_team, neutral=True, can_draw=True, to_overtime=False):
         home_elo, away_elo = self.teams[home_team].last_elo, self.teams[away_team].last_elo
-        method = 'fivethirtyeight'
+        method = 'regression'
         if method == 'fivethirtyeight': # Bruker bare Elo - seier uansett
             p_home = 1.0 / (math.pow(10.0, (-(home_elo - away_elo)/400.0)) + 1.0)
             if np.random.random() < p_home:
