@@ -176,30 +176,30 @@ class WorldCup:
     def playoff(self):
         playoffs = {}
         # 1/8 finals
-        playoffs[49] = self.match(self.adv('D2'), self.adv('C1'), can_draw=False)
-        playoffs[50] = self.match(self.adv('B2'), self.adv('A1'), can_draw=False)
-        playoffs[51] = self.match(self.adv('A2'), self.adv('B1'), can_draw=False)
-        playoffs[52] = self.match(self.adv('C2'), self.adv('D1'), can_draw=False)
-        playoffs[53] = self.match(self.adv('F2'), self.adv('E1'), can_draw=False)
-        playoffs[54] = self.match(self.adv('H2'), self.adv('G1'), can_draw=False)
-        playoffs[55] = self.match(self.adv('E2'), self.adv('F1'), can_draw=False)
-        playoffs[56] = self.match(self.adv('G2'), self.adv('H1'), can_draw=False)
+        playoffs[49] = self.match(self.adv('C1'), self.adv('D2'), can_draw=False)
+        playoffs[50] = self.match(self.adv('A1'), self.adv('B2'), can_draw=False)
+        playoffs[51] = self.match(self.adv('B1'), self.adv('A2'), can_draw=False)
+        playoffs[52] = self.match(self.adv('D1'), self.adv('C2'), can_draw=False)
+        playoffs[53] = self.match(self.adv('E1'), self.adv('F2'), can_draw=False)
+        playoffs[54] = self.match(self.adv('G1'), self.adv('H2'), can_draw=False)
+        playoffs[55] = self.match(self.adv('F1'), self.adv('E2'), can_draw=False)
+        playoffs[56] = self.match(self.adv('H1'), self.adv('G2'), can_draw=False)
 
         # 1/4 finals
         playoffs[57] = self.fix_or_new(game_num=57, home=playoffs[50].winner, away=playoffs[49].winner)
-        playoffs[58] = self.fix_or_new(game_num=58, home=playoffs[54].winner, away=playoffs[53].winner)
-        playoffs[59] = self.fix_or_new(game_num=59, home=playoffs[56].winner, away=playoffs[55].winner)
-        playoffs[60] = self.fix_or_new(game_num=60, home=playoffs[52].winner, away=playoffs[51].winner)
+        playoffs[58] = self.fix_or_new(game_num=58, home=playoffs[53].winner, away=playoffs[54].winner)
+        playoffs[59] = self.fix_or_new(game_num=59, home=playoffs[55].winner, away=playoffs[56].winner)
+        playoffs[60] = self.fix_or_new(game_num=60, home=playoffs[51].winner, away=playoffs[52].winner)
 
         # Semi finals
         playoffs[61] = self.fix_or_new(game_num=61, home=playoffs[58].winner, away=playoffs[57].winner)
         playoffs[62] = self.fix_or_new(game_num=62, home=playoffs[60].winner, away=playoffs[59].winner)
 
         # Bronze final
-        playoffs[63] = self.fix_or_new(game_num=63, home=playoffs[62].loser, away=playoffs[61].loser)
+        playoffs[63] = self.fix_or_new(game_num=63, home=playoffs[61].loser, away=playoffs[62].loser)
 
         # Final
-        playoffs[64] = self.fix_or_new(game_num=64, home=playoffs[62].winner, away=playoffs[61].winner)
+        playoffs[64] = self.fix_or_new(game_num=64, home=playoffs[61].winner, away=playoffs[62].winner)
 
         self.playoffs = playoffs
 
