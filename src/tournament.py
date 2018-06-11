@@ -131,19 +131,24 @@ class WorldCup:
         grouping = make_groups()
         self.team_list = [team for teams in grouping.values() for team in teams]
         self.match = match
+        self.games = {}
         self.group_play()
         self.playoff()
 
     def group_play(self):
         groups = pd.DataFrame(json.loads((DATA_DIR/'processed/groups.json').read_text())).melt().rename(columns={'variable': 'group', 'value': 'team'})
         results = []
-        for game in self.fixture.loc[self.fixture.group.str.contains('Group')].to_dict(orient='index').values():
+        for game_idx, game in self.fixture.loc[self.fixture.group.str.contains('Group')].to_dict(orient='index').items():
             if np.isnan(game['home_score']): # Not yet played
                 g = self.match(game['home'], game['away'], date=game['date'], can_draw=True)
             else: # Game is played, just recording the outcome
                 g = Outcome(game['home'], game['away'], game['home_score'], game['away_score'])
             results.append(g.home_stats)
             results.append(g.away_stats)
+            self.games[game_idx] = {'home': g.home,
+                                    'away': g.away,
+                                    'home_score': g.home_goals,
+                                    'away_score': g.away_goals}
         results = (pd
                    .DataFrame(results)
                    .assign(goals_diff = lambda df: df.goals_scored - df.goals_admitted)
@@ -176,8 +181,8 @@ class WorldCup:
     def playoff(self):
         playoffs = {}
         # 1/8 finals
-        playoffs[49] = self.match(self.adv('C1'), self.adv('D2'), can_draw=False)
-        playoffs[50] = self.match(self.adv('A1'), self.adv('B2'), can_draw=False)
+        playoffs[49] = self.match(self.adv('A1'), self.adv('B2'), can_draw=False)
+        playoffs[50] = self.match(self.adv('C1'), self.adv('D2'), can_draw=False)
         playoffs[51] = self.match(self.adv('B1'), self.adv('A2'), can_draw=False)
         playoffs[52] = self.match(self.adv('D1'), self.adv('C2'), can_draw=False)
         playoffs[53] = self.match(self.adv('E1'), self.adv('F2'), can_draw=False)
@@ -186,14 +191,14 @@ class WorldCup:
         playoffs[56] = self.match(self.adv('H1'), self.adv('G2'), can_draw=False)
 
         # 1/4 finals
-        playoffs[57] = self.fix_or_new(game_num=57, home=playoffs[50].winner, away=playoffs[49].winner)
+        playoffs[57] = self.fix_or_new(game_num=57, home=playoffs[49].winner, away=playoffs[50].winner)
         playoffs[58] = self.fix_or_new(game_num=58, home=playoffs[53].winner, away=playoffs[54].winner)
-        playoffs[59] = self.fix_or_new(game_num=59, home=playoffs[55].winner, away=playoffs[56].winner)
-        playoffs[60] = self.fix_or_new(game_num=60, home=playoffs[51].winner, away=playoffs[52].winner)
+        playoffs[59] = self.fix_or_new(game_num=60, home=playoffs[51].winner, away=playoffs[52].winner)
+        playoffs[60] = self.fix_or_new(game_num=59, home=playoffs[55].winner, away=playoffs[56].winner)
 
         # Semi finals
-        playoffs[61] = self.fix_or_new(game_num=61, home=playoffs[58].winner, away=playoffs[57].winner)
-        playoffs[62] = self.fix_or_new(game_num=62, home=playoffs[60].winner, away=playoffs[59].winner)
+        playoffs[61] = self.fix_or_new(game_num=61, home=playoffs[57].winner, away=playoffs[58].winner)
+        playoffs[62] = self.fix_or_new(game_num=62, home=playoffs[59].winner, away=playoffs[60].winner)
 
         # Bronze final
         playoffs[63] = self.fix_or_new(game_num=63, home=playoffs[61].loser, away=playoffs[62].loser)
@@ -204,6 +209,12 @@ class WorldCup:
         self.playoffs = playoffs
 
         self.winner = playoffs[64].winner
+
+        for game_idx, game in playoffs.items():
+            self.games[game_idx] = {'home': g.home,
+                                    'away': g.away,
+                                    'home_score': g.home_goals,
+                                    'away_score': g.away_goals}
 
     def get_placement(self, team):
         if team == self.playoffs[64].winner:
