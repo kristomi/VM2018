@@ -11,6 +11,7 @@ import collections
 import menon_styles
 from pathlib import Path
 from multiprocessing import cpu_count, Pool
+from PIL import Image, ImageDraw, ImageFont
 
 from src.make_data import make_groups
 
@@ -131,9 +132,16 @@ class WorldCup:
         grouping = make_groups()
         self.team_list = [team for teams in grouping.values() for team in teams]
         self.match = match
-        self.games = {}
+        self._games = {}
         self.group_play()
         self.playoff()
+
+    @property
+    def games(self):
+        df = pd.DataFrame(self._games).T
+        df['str_score'] = (df['home_score'].astype(str)
+                     + df['away_score'].astype(str))
+        return df[['home', 'home_score', 'away_score', 'away', 'str_score']]
 
     def group_play(self):
         groups = pd.DataFrame(json.loads((DATA_DIR/'processed/groups.json').read_text())).melt().rename(columns={'variable': 'group', 'value': 'team'})
@@ -145,7 +153,7 @@ class WorldCup:
                 g = Outcome(game['home'], game['away'], game['home_score'], game['away_score'])
             results.append(g.home_stats)
             results.append(g.away_stats)
-            self.games[game_idx] = {'home': g.home,
+            self._games[game_idx] = {'home': g.home,
                                     'away': g.away,
                                     'home_score': g.home_goals,
                                     'away_score': g.away_goals}
@@ -210,11 +218,11 @@ class WorldCup:
 
         self.winner = playoffs[64].winner
 
-        for game_idx, game in playoffs.items():
-            self.games[game_idx] = {'home': g.home,
-                                    'away': g.away,
-                                    'home_score': g.home_goals,
-                                    'away_score': g.away_goals}
+        for game_idx, g in playoffs.items():
+            self._games[game_idx] = {'home': g.home,
+                                     'away': g.away,
+                                     'home_score': g.home_goals,
+                                     'away_score': g.away_goals}
 
     def get_placement(self, team):
         if team == self.playoffs[64].winner:
@@ -238,31 +246,119 @@ class WorldCup:
         outcome = pd.DataFrame(outcome, columns=['rank', 'team']).sort_values(by='rank').set_index('team', drop=True)
         return outcome
 
-def data_fun(x): return WorldCup(x).stats.T
+    def plot(self, bracket_dict=None, image_file=None, opacity=256):
+        if bracket_dict is None:
+            bracket_dict = self.playoffs
+
+        if image_file is None:
+            image_file = Image.open('../data/brackets/world-cup.png').convert('RGBA')
+
+        # make a blank image for the text, initialized to transparent text color
+        txt = Image.new('RGBA', image_file.size, (255,255,255,0))
+
+        # get a font
+        fnt = ImageFont.truetype("../data/brackets/Verdana.ttf",28)
+
+        # get a drawing context
+        d = ImageDraw.Draw(txt)
+        group_offset = 80
+        group_vertical_offset = 188
+        group_cycle = 137
+        quarter_offset = 335
+        quarter_vertical_offset = 250
+        quarter_cycle = 274
+        right_edge = image_file.size[0] - 150
+
+        # 1/8 finals
+        n = 0
+        for game_num in [49, 50, 53, 54]:
+            home, away = bracket_dict[game_num].home, bracket_dict[game_num].away
+            d.text((group_offset, group_vertical_offset + n*group_cycle), home, font=fnt, fill=(0,0,0,opacity))
+            n +=1
+            d.text((group_offset, group_vertical_offset + n*group_cycle), away, font=fnt, fill=(0,0,0,opacity))
+            n +=1
+
+        n = 0
+        for game_num in [55, 56, 51, 52]:
+            home, away = bracket_dict[game_num].home, bracket_dict[game_num].away
+            d.text((right_edge - 120, group_vertical_offset + n*group_cycle), home, font=fnt, fill=(0,0,0,opacity))
+            n +=1
+            d.text((right_edge - 120, group_vertical_offset + n*group_cycle), away, font=fnt, fill=(0,0,0,opacity))
+            n +=1
+
+        # 1/4 finals
+        n = 0
+        for game_num in [58, 57]:
+            home, away = bracket_dict[game_num].home, bracket_dict[game_num].away
+            d.text((quarter_offset, quarter_vertical_offset + n*quarter_cycle), home, font=fnt, fill=(0,0,0,opacity))
+            n +=1
+            d.text((quarter_offset, quarter_vertical_offset + n*quarter_cycle), away, font=fnt, fill=(0,0,0,opacity))
+            n +=1
+
+        n = 0
+        for game_num in [59, 60]:
+            home, away = bracket_dict[game_num].home, bracket_dict[game_num].away
+            d.text((right_edge - quarter_offset, quarter_vertical_offset + n*quarter_cycle), home, font=fnt, fill=(0,0,0,opacity))
+            n +=1
+            d.text((right_edge - quarter_offset, quarter_vertical_offset + n*quarter_cycle), away, font=fnt, fill=(0,0,0,opacity))
+            n +=1
+
+        # Semi finals
+
+        home, away = bracket_dict[61].home, bracket_dict[61].away
+        d.text((520, 380 + 552), home, font=fnt, fill=(0,0,0,opacity))
+        d.text((520, 380), away, font=fnt, fill=(0,0,0,opacity))
+
+        home, away = bracket_dict[62].home, bracket_dict[62].away
+        d.text((right_edge - 520, 380), home, font=fnt, fill=(0,0,0,opacity))
+        d.text((right_edge - 520, 380 + 552), away, font=fnt, fill=(0,0,0,opacity))
+
+        # Final
+        semi1, semi2 = bracket_dict[64].home, bracket_dict[64].away
+        d.text((610, 680), semi1, font=fnt, fill=(0,0,0,opacity))
+        d.text((right_edge - 640, 680), semi2, font=fnt, fill=(0,0,0,opacity))
+
+        winner = bracket_dict[64].winner
+        d.text((720, 810), winner, font=fnt, fill=(0,0,0,opacity))
+
+        # Bronze final
+        semi1, semi2 = bracket_dict[63].home, bracket_dict[63].away
+        d.text((640, 1020), semi1, font=fnt, fill=(0,0,0,opacity))
+        d.text((640, 1078), away, font=fnt, fill=(0,0,0,opacity))
+
+        # 3rd place
+        d.text((right_edge - 638, 1042), bracket_dict[63].winner, font=fnt, fill=(0,0,0,opacity))
+
+        out = Image.alpha_composite(image_file, txt)
+
+        return out
+
+
+def data_fun(x):
+    wc = WorldCup(x)
+    return wc.stats.T, wc.games.str_score
+
 
 class Simulation:
     """
     Class for simulating the World Cup 2018 with different parameters
     """
-    def __init__(self, predictors: list, n: int = 1, multi_cores: bool = True):
+    def __init__(self, predictors: list, n: int = 1):
         """
         Runs n simulations for each set of parameters in pars, and returns the aggregate statistics
         """
         self.predictors = predictors
         self.n = n
-        self.multi_cores = multi_cores
-        self.sim = self.simulate()
+        self.sim, self.str_scores = self.simulate()
 
     def simulate(self):
         groups = make_groups()
 
-        if not self.multi_cores:
-            out = pd.concat([WorldCup(pred).stats.T for pred in self.predictors for _ in range(self.n)], axis=0).reset_index(drop=True)
-        else:
-            pool = Pool(cpu_count())
-            data = [pred for pred in self.predictors for _ in range(self.n)]
-            out = pd.concat(pool.map(data_fun, data))
-        return (pd
+        pool = Pool(cpu_count())
+        data = [pred for pred in self.predictors for _ in range(self.n)]
+        out, res = zip(*pool.map(data_fun, data))
+        out = pd.concat(out)
+        df1 = (pd
                  .concat([
                      out.describe().T.sort_values(by='50%'),
                      out.agg(lambda col: np.mean(col==1)).rename('share wins'),
@@ -278,6 +374,7 @@ class Simulation:
                  .reset_index(drop=True)
                  [['country', 'group', 'mean', 'std', 'min', '25%', '50%', '75%', 'max', 'share wins', 'share top 4', 'share playoff']]
                 )
+        return df1, pd.concat(res, axis=1)
 
     @property
     def group(self):
